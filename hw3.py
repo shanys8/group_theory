@@ -1,9 +1,7 @@
 import numpy as np
-import pandas as pd
 import math
 from numpy import linalg as LA
 from scipy import linalg
-import time
 from scipy.stats import ortho_group
 
 
@@ -28,13 +26,12 @@ def generate_samples(n, N):
     while i < N:
         samples[i] = generate_special_orthogonal_sample(n)
         i += 1
-    # return samples
-    return np.array([
-        [[-1, 0, 0], [0, -1, 0], [0, 0, 1]],
-        [[0, 0, 1], [-1, 0, 0], [0, -1, 0]],
-        [[0, 0, -1], [-1, 0, 0], [0, 1, 0]]
-    ])
-
+    return samples
+    # return np.array([
+    #     [[-1, 0, 0], [0, -1, 0], [0, 0, 1]],
+    #     [[0, 0, 1], [-1, 0, 0], [0, -1, 0]],
+    #     [[0, 0, -1], [-1, 0, 0], [0, 1, 0]]
+    # ])
 
 
 def generate_Hij(samples, i, j):
@@ -63,7 +60,14 @@ def build_M(samples, n, N):
 
 
 def build_V(M, n):
-    w, v = linalg.eigh(M)
+    dim_M = M.shape[0]-1
+    w, v = linalg.eigh(M, eigvals=(dim_M - n + 1, dim_M))
+    # w, v = linalg.eigh(M)
+    # w, v = LA.eig(M)
+    print('eigenvectors')
+    print(v)
+    print('eigenvalues')
+    print(w)
     return v[:, -n:]
 
 
@@ -81,23 +85,29 @@ def calculate_O_opt(samples, V, n, N):
     return np.dot(Vh, U.T)
 
 
+def round_block(B):
+    U, S, Vh = linalg.svd(B)
+    return LA.det(np.dot(U, Vh)) * np.dot(U, Vh)
+
+
 def validate_results(samples, V, n, N):
     Q_opt = calculate_O_opt(samples, V, n, N)
     error = 0
     i = 0
     # approx. samples should be similar to original samples
     while i < N:
-        approx_sample = np.dot(getBi(V, i, n), Q_opt)
+        approx_sample = np.dot(round_block(getBi(V, i, n)), Q_opt)
         error += math.pow(LA.norm(samples[i] - approx_sample , ord='fro'), 2)
         print('approx_sample')
         print(approx_sample)
-        print('samples[i]')
+        print('samples', i)
         print(samples[i])
         assert (np.allclose(approx_sample, samples[i], rtol=1.e-2, atol=1.e-2))
         i += 1
 
     # error for optimal Q should be zero
     assert(np.isclose(error, 0, rtol=1.e-2, atol=1.e-2))
+
 
 def main():
     n = 3
@@ -113,10 +123,10 @@ def main():
     print(M)
 
     V = build_V(M, n)
+    print('V')
+    print(V)
 
     validate_results(samples, V, n, N)
-
-
 
     return 0
 
