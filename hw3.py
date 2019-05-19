@@ -1,9 +1,12 @@
 import numpy as np
 import math
+import random
+
 from numpy import linalg as LA
 from scipy import linalg
 from scipy.stats import ortho_group
-
+from mpl_toolkits.mplot3d import Axes3D
+import matplotlib.pyplot as plt
 
 def question1():
     return
@@ -62,12 +65,6 @@ def build_M(samples, n, N):
 def build_V(M, n):
     dim_M = M.shape[0]-1
     w, v = linalg.eigh(M, eigvals=(dim_M - n + 1, dim_M))
-    # w, v = linalg.eigh(M)
-    # w, v = LA.eig(M)
-    print('eigenvectors')
-    print(v)
-    print('eigenvalues')
-    print(w)
     return v[:, -n:]
 
 
@@ -98,36 +95,75 @@ def validate_results(samples, V, n, N):
     while i < N:
         approx_sample = np.dot(round_block(getBi(V, i, n)), Q_opt)
         error += math.pow(LA.norm(samples[i] - approx_sample , ord='fro'), 2)
-        print('approx_sample')
-        print(approx_sample)
-        print('samples', i)
-        print(samples[i])
+        # q1 -  validate approx sample is close enough to the original sample
         assert (np.allclose(approx_sample, samples[i], rtol=1.e-2, atol=1.e-2))
         i += 1
 
-    # error for optimal Q should be zero
+    # q2 -  error for optimal Q should be zero
     assert(np.isclose(error, 0, rtol=1.e-2, atol=1.e-2))
 
 
-def main():
+def synchronization_problem():
     n = 3
     N = 3
     samples = generate_samples(n, N)
-
-    # print('samples')
-    # print(samples)
-
     M = build_M(samples, n, N)
-
-    print('M')
-    print(M)
-
     V = build_V(M, n)
-    print('V')
-    print(V)
-
     validate_results(samples, V, n, N)
 
+
+# generate M matrix
+def sample_so_matrix():
+    n = 3
+    # generate ramdom angle between 0 and 2pi
+    alpha = 2 * math.pi * random.random()
+    # build rotation matrix in alpha angle - z axis remains the same
+    R = np.array([[math.cos(alpha), math.sin(alpha), 0], [-math.sin(alpha), math.cos(alpha), 0], [0, 0, 1]])
+    # generate v - random point on the unit sphere
+    (x, y) = (random.uniform(0, 1), random.uniform(0, 1))
+    v = np.array([math.cos(2 * math.pi * x) * math.sqrt(y), math.sin(2 * math.pi * x) * math.sqrt(y), math.sqrt(1-y)])
+    # reflection matrix H
+    H = np.identity(n) - 2 * np.dot(v[:, np.newaxis], v[np.newaxis, :])
+    # rotation matrix M
+    M = (-1) * np.dot(H, R)
+    return M
+
+
+# generate 1000 samples from some x in R3 (in my case x=[0,0,1]) multiplied by M
+def validate_sample_so_matrix():
+    n = 3
+    x = np.array([0, 0, 1])
+    results = np.empty((n, 0), float)
+    i = 0
+    while i < 1000:
+        M = sample_so_matrix()
+        result = np.dot(M, x)[:, np.newaxis]
+        results = np.append(results, result, axis=1)
+        i += 1
+    visualize_results(results)
+
+
+def visualize_results(results):
+    fig = plt.figure()
+    ax = fig.add_subplot(111, projection='3d')
+
+    x = results[0]
+    y = results[1]
+    z = results[2]
+
+    ax.scatter(x, y, z, c='r', marker='o')
+
+    ax.set_xlabel('X Label')
+    ax.set_ylabel('Y Label')
+    ax.set_zlabel('Z Label')
+
+    plt.show()
+
+
+def main():
+
+    synchronization_problem()  # q1 and q2
+    validate_sample_so_matrix()  # q3
     return 0
 
 
